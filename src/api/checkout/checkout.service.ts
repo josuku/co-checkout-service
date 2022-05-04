@@ -3,6 +3,7 @@ import { CheckoutResponse, Order, Product } from './checkout.interface';
 import { ClientOptions, Transport, ClientProxyFactory } from '@nestjs/microservices';
 import { randomInt } from 'crypto';
 import { bill_ms_port, bill_ms_host, logistic_ms_host, logistic_ms_port } from 'src/config';
+import { resolve } from 'path';
 
 @Injectable()
 export class CheckoutService {
@@ -23,19 +24,21 @@ export class CheckoutService {
     }
   });
 
-  public async checkoutOrder(order: Order): /*Promise<*/Promise</*Promise<*/ CheckoutResponse /*>*/>/*>*/ {
+  public async checkoutOrder(order: Order): Promise<CheckoutResponse> {
     let result: CheckoutResponse = {
       id: 1,
       success: true,
-      errorMessage: null
+      errorMessage: null,
+      total: 0,
+      sentOrderId: 0
     };
 
     // 1. SAVE ORDER (OrderService)
-    const orderId = randomInt(1000);
+    result.id = randomInt(1000);
 
-    await this.calculateTotal(order.products);
+    result.total = await this.calculateTotal(order.products);
 
-    await this.createSentOrder(orderId);
+    result.sentOrderId = await this.createSentOrder(result.id);
 
     // 4. CONFIRM ORDER
 
@@ -54,15 +57,27 @@ export class CheckoutService {
     return true;
   }
 
-  async calculateTotal(products: Product[]) {
-    this.billService.send('calculateTotal', products).subscribe(async (result) => {
-        console.log('calculateTotal -> ', result)
+  async calculateTotal(products: Product[]): Promise<number> {
+    return new Promise((resolve, reject) => {
+      this.billService.send('calculateTotal', products).subscribe(async (result) => {
+        if (result.errorMessage) {
+          reject(result.errorMessage);
+        } else {
+          resolve(result.total);
+        }
+      });
     });
   }
 
-  async createSentOrder(orderId: number) {
-    this.logisticService.send('createSentOrder', orderId).subscribe(async (result) => {
-        console.log('createSentOrder -> ', result)
+  async createSentOrder(orderId: number): Promise<number>  {
+    return new Promise((resolve, reject) => {
+      this.logisticService.send('createSentOrder', orderId).subscribe(async (result) => {
+        if (result.errorMessage) {
+          reject(result.errorMessage);
+        } else {
+          resolve(result.id);
+        }
+      });
     });
   }
 }
