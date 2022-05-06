@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckoutResponse, Order, Product } from './checkout.interface';
-import { ClientOptions, Transport, ClientProxyFactory } from '@nestjs/microservices';
-import { randomInt } from 'crypto';
-import { bill_ms_port, bill_ms_host, logistic_ms_host, logistic_ms_port } from 'src/config';
-import { resolve } from 'path';
+import { Transport, ClientProxyFactory } from '@nestjs/microservices';
+import { bill_ms_port, bill_ms_host, logistic_ms_host, logistic_ms_port, order_ms_host, order_ms_port } from 'src/config';
 
 @Injectable()
 export class CheckoutService {
@@ -24,23 +22,34 @@ export class CheckoutService {
     }
   });
 
+  private readonly orderService = ClientProxyFactory.create({
+    transport: Transport.TCP,
+    options: {
+        host: order_ms_host,
+        port: order_ms_port as number
+    }
+  });
+
   public async checkoutOrder(order: Order): Promise<CheckoutResponse> {
     let result: CheckoutResponse = {
-      id: 1,
-      success: true,
-      errorMessage: null,
-      total: 0,
-      sentOrderId: 0
+      id: 0,
+      errorMessage: null
     };
 
-    // 1. SAVE ORDER (OrderService)
-    result.id = randomInt(1000);
+    try {
+      order.id = await this.saveOrder(order);
 
-    result.total = await this.calculateTotal(order.products);
-
-    result.sentOrderId = await this.createSentOrder(result.id);
-
-    // 4. CONFIRM ORDER
+      order.total = await this.calculateTotal(order.products);
+  
+      order.logisticId = await this.createSentOrder(order.id);
+  
+      await this.confirmOrder(order);
+  
+      result.id = order.id;
+    }
+    catch (error) {
+      result.errorMessage = error;
+    }
 
     return result;
   }
@@ -55,6 +64,32 @@ export class CheckoutService {
       }
     }
     return true;
+  }
+
+  async saveOrder(order: Order): Promise<number> {
+    return new Promise((resolve, reject) => {
+      order.confirmed = false;
+      this.orderService.send('create', order).subscribe(async (result) => {
+        if (result.errorMessage) {
+          reject(result.errorMessage);
+        } else {
+          resolve(result.id);
+        }
+      });
+    });
+  }
+
+  async confirmOrder(order: Order): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      order.confirmed = true;
+      this.orderService.send('modify', order).subscribe(async (result) => {
+        if (result.errorMessage) {
+          reject(result.errorMessage);
+        } else {
+          resolve(true);
+        }
+      });
+    });
   }
 
   async calculateTotal(products: Product[]): Promise<number> {

@@ -8,9 +8,9 @@ export class CheckoutController {
 
   @Post('checkout')
   public async checkoutOrder(@Body() body: Order): Promise<CheckoutResponse> {
-    Logger.log('body:',body)
+    Logger.log('received checkout request', 'checkout')
     if (!this.checkoutService.checkOrderIsValid(body)) {
-      Logger.log('Bad Request', body);
+      Logger.error('Bad Request');
       throw new BadRequestException();
     }
     return this.checkoutService.checkoutOrder(body);

@@ -13,10 +13,4 @@ describe('CheckoutController', () => {
 
     checkoutController = app.get<CheckoutController>(CheckoutController);
   });
-
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      //expect(checkoutController.checkoutOrder()).toBe('Hello World!');
-    });
-  });
 });

@@ -3,6 +3,10 @@ export interface Order {
     date: Date;
     direction: string;
     products: Product[];
+    confirmed: boolean;
+    id: number;
+    total: number;
+    logisticId: number;
 }
 
 export interface Product {
@@ -13,8 +17,5 @@ export interface Product {
 
 export interface CheckoutResponse {
     id: number;
-    success: boolean;
     errorMessage: string;
-    total: number,
-    sentOrderId: number
 }
