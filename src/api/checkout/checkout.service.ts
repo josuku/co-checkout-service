@@ -40,11 +40,11 @@ export class CheckoutService {
       order.id = await this.saveOrder(order);
 
       order.total = await this.calculateTotal(order.products);
-  
-      order.logisticId = await this.createSentOrder(order.id);
-  
+
+      await this.createSentOrder(order.id);
+
       await this.confirmOrder(order);
-  
+      
       result.id = order.id;
     }
     catch (error) {
@@ -55,11 +55,11 @@ export class CheckoutService {
   }
 
   public checkOrderIsValid(order: Order): boolean {
-    if (!order.clientId || !order.date || !order.products || order.products.length === 0) {
+    if (!order.clientId || !order.date || !order.direction || !order.products || order.products.length === 0) {
       return false;
     }
     for (const product in order.products) {
-      if (!order.products[product].id || !order.products[product].cost || !order.products[product].quantity) {
+      if (!order.products[product].productId || !order.products[product].cost || !order.products[product].quantity) {
         return false;
       }
     }

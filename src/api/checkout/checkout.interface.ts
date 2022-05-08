@@ -6,11 +6,11 @@ export interface Order {
     confirmed: boolean;
     id: number;
     total: number;
-    logisticId: number;
 }
 
 export interface Product {
-    id: number;
+    productId: number;
+    orderId: number;
     quantity: number;
     cost: number;
 }
